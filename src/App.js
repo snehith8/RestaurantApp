@@ -1,123 +1,94 @@
-import {useEffect, useState} from 'react'
+import {Component} from 'react'
+import {Route, Switch, Redirect} from 'react-router-dom'
+import Login from './Components/Login'
+import Home from './Components/Home'
+import Cart from './Components/Cart'
+import ProtectedRoute from './Components/ProtectedRoute'
+import CartContext from './Components/CartContext'
 import './App.css'
 
-const App = () => {
-  const [activeTab, setActiveTab] = useState('')
-  const [error, setError] = useState('')
-  const [categories, setCategories] = useState([])
-  const [count, setCount] = useState({})
-  const [head, setHeader] = useState('')
+class App extends Component {
+  state = {
+    cartList: [],
+  }
 
-  const onTab = id => {
-    setActiveTab(id)
+  removeAllCartItems = () => {
+    this.setState({cartList: []})
   }
-  const onIncrement = dishId => {
-    setCount(prev => ({...prev, [dishId]: (prev[dishId] || 0) + 1}))
+
+  addCartItem = dish => {
+    const {cartList} = this.state
+    const existingDish = cartList.find(item => item.dishId === dish.dishId)
+
+    if (existingDish) {
+      this.setState({
+        cartList: cartList.map(item =>
+          item.dishId === dish.dishId
+            ? {...item, quantity: item.quantity + dish.quantity}
+            : item,
+        ),
+      })
+    } else {
+      this.setState({cartList: [...cartList, dish]})
+    }
   }
-  const onDecrement = dishId => {
-    setCount(prev => {
-      const qnty = prev[dishId] || 0
-      if (qnty <= 0) return prev
-      return {...prev, [dishId]: prev[dishId] - 1}
+
+  removeCartItem = dishId => {
+    const {cartList} = this.state
+    this.setState({
+      cartList: cartList.filter(item => item.dishId !== dishId),
     })
   }
 
-  useEffect(() => {
-    const apicall = async () => {
-      const response = await fetch(
-        `https://apis2.ccbp.in/restaurant-app/restaurant-menu-list-details`,
-      )
-      if (response.ok) {
-        const data = await response.json()
-        setHeader(data[0].restaurant_name)
-        setCategories(data[0].table_menu_list)
-        if (data[0].table_menu_list.length > 0) {
-          setActiveTab(data[0].table_menu_list[0].menu_category_id)
-        }
-      } else {
-        setError(e => e.message)
-      }
+  incrementCartItemQuantity = dishId => {
+    const {cartList} = this.state
+    this.setState({
+      cartList: cartList.map(item =>
+        item.dishId === dishId ? {...item, quantity: item.quantity + 1} : item,
+      ),
+    })
+  }
+
+  decrementCartItemQuantity = dishId => {
+    const {cartList} = this.state
+    const targetItem = cartList.find(item => item.dishId === dishId)
+
+    if (targetItem.quantity > 1) {
+      this.setState({
+        cartList: cartList.map(item =>
+          item.dishId === dishId
+            ? {...item, quantity: item.quantity - 1}
+            : item,
+        ),
+      })
+    } else {
+      this.removeCartItem(dishId)
     }
-    apicall()
-  }, [])
-  console.log('a', categories)
+  }
 
-  const activeCategory = categories.find(
-    each =>
-      each.menu_category_id === activeTab || each.menu_category === activeTab,
-  )
-  const activeDishes = activeCategory ? activeCategory.category_dishes : []
-  const getCartCount = () =>
-    Object.values(count).reduce((acc, curr) => acc + curr, 0)
+  render() {
+    const {cartList} = this.state
 
-  return (
-    <div className="restaurant">
-      {error && <p>{error}</p>}
-      <div className="title">
-        <h1>{head}</h1>
-        <div className="cart-container">
-          <p>My Orders</p>
-          <p className="cart-count">{getCartCount()}</p>
-        </div>
-      </div>
-      <ul className="categories">
-        {categories &&
-          categories.map(each => (
-            <li key={each.menu_category_id}>
-              <button
-                className="catselection"
-                type="button"
-                onClick={() => onTab(each.menu_category_id)}
-              >
-                {each.menu_category}
-              </button>
-            </li>
-          ))}
-      </ul>
-      <ul className="items">
-        {activeDishes.map(dish => (
-          <li key={dish.dish_id} className="dishes">
-            <div className="details">
-              <h3>{dish.dish_name}</h3>
-              <p>{`${dish.dish_currency} ${dish.dish_price}`}</p>
-              <p className="description">{dish.dish_description}</p>
-              {dish.dish_Availability ? (
-                <div className="buttons">
-                  <button
-                    type="button"
-                    onClick={() => onDecrement(dish.dish_id)}
-                  >
-                    -
-                  </button>
-                  <p>{count[dish.dish_id] || 0}</p>
-                  <button
-                    type="button"
-                    onClick={() => onIncrement(dish.dish_id)}
-                  >
-                    +
-                  </button>
-                </div>
-              ) : (
-                <p className="NA">Not available</p>
-              )}
-              {dish.addonCat && dish.addonCat.length > 0 && (
-                <p className="customs">Customizations available</p>
-              )}
-            </div>
-            <div className="calories">
-              <p>{dish.dish_calories} calories</p>
-            </div>
-            <div className="image">
-              <img
-                className="dishimage"
-                src={dish.dish_image}
-                alt={dish.dish_name}
-              />
-            </div>
-          </li>
-        ))}
-      </ul>
-    </div>
-  )
+    return (
+      <CartContext.Provider
+        value={{
+          cartList,
+          removeAllCartItems: this.removeAllCartItems,
+          addCartItem: this.addCartItem,
+          removeCartItem: this.removeCartItem,
+          incrementCartItemQuantity: this.incrementCartItemQuantity,
+          decrementCartItemQuantity: this.decrementCartItemQuantity,
+        }}
+      >
+        <Switch>
+          <Route exact path="/login" component={Login} />
+          <ProtectedRoute exact path="/" component={Home} />
+          <ProtectedRoute exact path="/cart" component={Cart} />
+          <Redirect to="/login" />
+        </Switch>
+      </CartContext.Provider>
+    )
+  }
 }
+
 export default App
