@@ -481,3 +481,15 @@ body {
   font-weight: 600;
   color: #64748b;
 }
+
+.credentials-info {
+  font-size: 13px;
+  color: #64748b;
+  margin-bottom: 16px;
+  font-weight: 500;
+  text-align: center;
+}
+span {
+  text-decoration: solid;
+  color: black;
+}
